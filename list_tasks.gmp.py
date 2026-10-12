@@ -92,6 +92,7 @@ def main(gmp: GMP, args):
                         'rows=100000 sort=name ignore-pagination=1'
                     ),
                     details=True,
+                    report_format_id=CSV_RESULTS, 
                     ignore_pagination=True,
                 )
                 results = report_response.findall('.//result')
