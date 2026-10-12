@@ -61,14 +61,12 @@ def main(gmp: GMP, args):
                 encoded_csv = ''.join(report_format.tail.split())
                 csv_payload = base64.b64decode(encoded_csv, validate=True)
                 line_count = len(csv_payload.splitlines())
-                report_count = report_response.findtext('.//report_count')
-                if report_count is not None and report_count.isdigit():
-                    result_count = int(report_count)
-                else:
-                    csv_text = io.TextIOWrapper(
-                        io.BytesIO(csv_payload), encoding='utf-8-sig', newline=''
-                    )
-                    result_count = max(sum(1 for _ in csv.reader(csv_text)) - 1, 0)
+                csv_text = io.TextIOWrapper(
+                    io.BytesIO(csv_payload), encoding='utf-8-sig', newline=''
+                )
+                csv_records = csv.reader(csv_text)
+                next(csv_records, None)
+                result_count = sum(1 for record in csv_records if record)
 
                 with open(filename, mode='wb') as csv_file:
                     csv_file.write(csv_payload)
