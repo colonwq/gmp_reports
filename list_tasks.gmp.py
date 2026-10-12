@@ -1,6 +1,7 @@
 import csv
 import re
 from gvm.protocols.gmp import GMP
+from gvm.protocols.gmp.requests.v224 import ReportFormatType
 
 
 def _parse_nvt_tags(nvt):
@@ -92,7 +93,7 @@ def main(gmp: GMP, args):
                         'rows=100000 sort=name ignore-pagination=1'
                     ),
                     details=True,
-                    report_format_id=CSV_RESULTS, 
+                    report_format_id=ReportFormatType.CSV_RESULTS,
                     ignore_pagination=True,
                 )
                 results = report_response.findall('.//result')
