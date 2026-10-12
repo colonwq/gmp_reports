@@ -4,21 +4,6 @@ from gvm.protocols.gmp import GMP
 from gvm.protocols.gmp.requests.v224 import ReportFormatType
 
 
-def _write_element_debug(element, debug_file, depth=0):
-    indent = '  ' * depth
-    attributes = ''.join(
-        f' {key}={value!r}'
-        for key, value in element.attrib.items()
-    )
-    debug_file.write(
-        f'{indent}<{element.tag}{attributes}> '
-        f'text={element.text!r} tail={element.tail!r}\n'
-    )
-
-    for child in element:
-        _write_element_debug(child, debug_file, depth + 1)
-
-
 def main(gmp: GMP, args):
     # Fetch tasks using the GMP protocol
     response = gmp.get_tasks()
@@ -74,16 +59,10 @@ def main(gmp: GMP, args):
                 encoded_csv = ''.join(report_format.tail.split())
                 csv_payload = base64.b64decode(encoded_csv, validate=True)
 
-                debug_filename = f'{filename}.debug'
-                with (
-                    open(filename, mode='wb') as csv_file,
-                    open(debug_filename, mode='w', encoding='utf-8') as debug_file,
-                ):
+                with open(filename, mode='wb') as csv_file:
                     csv_file.write(csv_payload)
-                    _write_element_debug(report_response, debug_file)
 
                 print(f"   └── Exported CSV report to {filename}")
-                print(f"   └── Wrote complete report response to {debug_filename}")
             except Exception as e:
                 print(f"   └── Failed to export report for {name}: {e}")
 
