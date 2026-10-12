@@ -84,10 +84,9 @@ def main(gmp: GMP, args):
             filename = f"{safe_name}-{safe_last_run}.csv"
 
             try:
-                # Match the filter and CSV report format used by the gvm-cli export.
+                # Keep the response in structured GMP XML for field extraction.
                 report_response = gmp.get_report(
                     report_id=report_id,
-                    report_format_id='c1645568-627a-11e3-a660-406186ea4fc5',
                     filter_string=(
                         'apply_overrides=0 levels=hml min-qod=1 first=1 '
                         'rows=100000 sort=name ignore-pagination=1'
@@ -199,6 +198,8 @@ def main(gmp: GMP, args):
                             count += 1
 
                 print(f"   └── Exported {count} findings to {filename}")
+                if not results:
+                    print(f"   └── GMP returned no result elements for {name}")
             except Exception as e:
                 print(f"   └── Failed to export report for {name}: {e}")
 
