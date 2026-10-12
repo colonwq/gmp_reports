@@ -2,6 +2,51 @@ import csv
 import re
 from gvm.protocols.gmp import GMP
 
+
+def _parse_nvt_tags(nvt):
+    tags = nvt.findtext('tags', '') if nvt is not None else ''
+    return {
+        key: value
+        for item in tags.split('|')
+        if '=' in item
+        for key, value in [item.split('=', 1)]
+    }
+
+
+def _reference_values(result):
+    references = {'cve': [], 'bid': [], 'cert': [], 'other': []}
+
+    for reference in result.findall('.//ref'):
+        kind = reference.get('type', '').lower()
+        value = reference.get('id', '') or (reference.text or '').strip()
+        if not value:
+            continue
+
+        if kind == 'cve':
+            bucket = 'cve'
+        elif kind == 'bid':
+            bucket = 'bid'
+        elif kind.startswith('cert'):
+            bucket = 'cert'
+        else:
+            bucket = 'other'
+        if value not in references[bucket]:
+            references[bucket].append(value)
+
+    for kind in ('cve', 'bid', 'cert'):
+        for reference in result.findall(f'.//{kind}'):
+            value = (reference.text or '').strip()
+            if value and value not in references[kind]:
+                references[kind].append(value)
+
+    for reference in result.findall('.//xref'):
+        value = reference.get('id', '')
+        if value and value not in references['other']:
+            references['other'].append(value)
+
+    return {kind: ', '.join(values) for kind, values in references.items()}
+
+
 def main(gmp: GMP, args):
     # Fetch tasks using the GMP protocol
     response = gmp.get_tasks()
@@ -75,7 +120,9 @@ def main(gmp: GMP, args):
                             # Host / IP / Hostname extraction
                             host_elem = result.find('host')
                             ip = host_elem.text if host_elem is not None else ""
-                            hostname = host_elem.get('asset', '') if host_elem is not None else ""
+                            hostname = result.findtext('hostname', '')
+                            if not hostname and host_elem is not None:
+                                hostname = host_elem.get('asset', '')
                             
                             # Port details
                             port_full = result.findtext('port', '')
@@ -87,32 +134,48 @@ def main(gmp: GMP, args):
                                 port_protocol = parts[1]
 
                             # Metrics
-                            cvss = result.findtext('cvss', '')
-                            severity = result.findtext('severity', '')
+                            cvss = (
+                                result.findtext('severity', '')
+                                or result.findtext('cvss', '')
+                                or result.findtext('nvt/cvss_base', '')
+                            )
+                            severity = threat
                             qod = result.findtext('qod/value', '')
                             
                             # NVT metadata
                             nvt = result.find('nvt')
+                            nvt_tags = _parse_nvt_tags(nvt)
+
+                            def nvt_value(element, *tag_names):
+                                value = nvt.findtext(element, '') if nvt is not None else ''
+                                if value:
+                                    return value
+                                return next((nvt_tags[key] for key in tag_names if nvt_tags.get(key)), '')
+
                             nvt_oid = nvt.get('oid', '') if nvt is not None else ""
                             nvt_name = result.findtext('nvt/name', '')
                             
                             solution_elem = result.find('nvt/solution')
                             solution_type = solution_elem.get('type', '') if solution_elem is not None else ''
-                            impact = result.findtext('nvt/impact', '')
-                            solution = result.findtext('nvt/solution', '')
-                            affected = result.findtext('nvt/affected', '')
-                            insight = result.findtext('nvt/insight', '')
-                            vuln_detection_method = result.findtext('nvt/vulnerability_detection_method', '')
-                            prod_detection_result = result.findtext('nvt/product_detection_result', '')
+                            impact = nvt_value('impact', 'impact')
+                            solution = nvt_value('solution', 'solution')
+                            affected = nvt_value('affected', 'affected')
+                            insight = nvt_value('insight', 'insight')
+                            vuln_detection_method = nvt_value(
+                                'vulnerability_detection_method', 'vuldetect', 'vulnerability_detection_method'
+                            )
+                            prod_detection_result = nvt_value(
+                                'product_detection_result', 'product_detection_result', 'product_detection'
+                            )
 
-                            # References & CVEs (aggregating comma-separated text)
-                            cves = ", ".join([cve.text for cve in result.findall('.//cve') if cve.text])
-                            bids = ", ".join([bid.text for bid in result.findall('.//bid') if bid.text])
-                            certs = ", ".join([cert.text for cert in result.findall('.//cert') if cert.text])
-                            refs = ", ".join([ref.get('id', '') for ref in result.findall('.//xref') if ref.get('id')])
+                            references = _reference_values(result)
+                            cves = references['cve']
+                            bids = references['bid']
+                            certs = references['cert']
+                            refs = references['other']
 
-                            summary = result.findtext('description', '')
-                            specific_result = result.findtext('scan_result', '')
+                            summary = nvt_value('summary', 'summary')
+                            specific_result = result.findtext('description', '') or result.findtext('scan_result', '')
 
                             # Clean up line breaks in large descriptive fields
                             def clean_text(val):
