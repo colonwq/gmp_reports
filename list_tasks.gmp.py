@@ -58,11 +58,12 @@ def main(gmp: GMP, args):
 
                 encoded_csv = ''.join(report_format.tail.split())
                 csv_payload = base64.b64decode(encoded_csv, validate=True)
+                line_count = len(csv_payload.splitlines())
 
                 with open(filename, mode='wb') as csv_file:
                     csv_file.write(csv_payload)
 
-                print(f"   └── Exported CSV report to {filename}")
+                print(f"   └── Exported CSV report to {filename} ({line_count} lines)")
             except Exception as e:
                 print(f"   └── Failed to export report for {name}: {e}")
 
