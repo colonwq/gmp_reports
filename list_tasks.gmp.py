@@ -84,11 +84,16 @@ def main(gmp: GMP, args):
             filename = f"{safe_name}-{safe_last_run}.csv"
 
             try:
-                # Fetch report with details and ignore pagination; filter severity in Python
+                # Match the filter and CSV report format used by the gvm-cli export.
                 report_response = gmp.get_report(
-                    report_id=report_id, 
-                    details=True, 
-                    ignore_pagination=True
+                    report_id=report_id,
+                    report_format_id='c1645568-627a-11e3-a660-406186ea4fc5',
+                    filter_string=(
+                        'apply_overrides=0 levels=hml min-qod=1 first=1 '
+                        'rows=100000 sort=name ignore-pagination=1'
+                    ),
+                    details=True,
+                    ignore_pagination=True,
                 )
                 results = report_response.findall('.//result')
 
