@@ -1,4 +1,6 @@
 import base64
+import csv
+import io
 import re
 from gvm.protocols.gmp import GMP
 from gvm.protocols.gmp.requests.v224 import ReportFormatType
@@ -59,11 +61,22 @@ def main(gmp: GMP, args):
                 encoded_csv = ''.join(report_format.tail.split())
                 csv_payload = base64.b64decode(encoded_csv, validate=True)
                 line_count = len(csv_payload.splitlines())
+                report_count = report_response.findtext('.//report_count')
+                if report_count is not None and report_count.isdigit():
+                    result_count = int(report_count)
+                else:
+                    csv_text = io.TextIOWrapper(
+                        io.BytesIO(csv_payload), encoding='utf-8-sig', newline=''
+                    )
+                    result_count = max(sum(1 for _ in csv.reader(csv_text)) - 1, 0)
 
                 with open(filename, mode='wb') as csv_file:
                     csv_file.write(csv_payload)
 
-                print(f"   └── Exported CSV report to {filename} ({line_count} lines)")
+                print(
+                    f"   └── Exported CSV report to {filename} "
+                    f"({result_count} results, {line_count} lines)"
+                )
             except Exception as e:
                 print(f"   └── Failed to export report for {name}: {e}")
 
