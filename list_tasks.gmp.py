@@ -54,11 +54,10 @@ def _write_element_debug(element, debug_file, depth=0):
         f' {key}={value!r}'
         for key, value in element.attrib.items()
     )
-    debug_file.write(f'{indent}<{element.tag}{attributes}>\n')
-
-    text = (element.text or '').strip()
-    if text:
-        debug_file.write(f'{indent}  {text}\n')
+    debug_file.write(
+        f'{indent}<{element.tag}{attributes}> '
+        f'text={element.text!r} tail={element.tail!r}\n'
+    )
 
     for child in element:
         _write_element_debug(child, debug_file, depth + 1)
@@ -120,6 +119,7 @@ def main(gmp: GMP, args):
                     open(debug_filename, mode='w', encoding='utf-8') as debug_file,
                 ):
                     writer = csv.writer(csv_file)
+                    _write_element_debug(report_response, debug_file)
                     
                     # Exact requested CSV Header
                     headers = [
@@ -133,11 +133,7 @@ def main(gmp: GMP, args):
                     writer.writerow(headers)
 
                     count = 0
-                    for result_index, result in enumerate(results, start=1):
-                        debug_file.write(f'Result {result_index}\n')
-                        _write_element_debug(result, debug_file)
-                        debug_file.write('\n')
-
+                    for result in results:
                         threat_elem = result.find('threat')
                         threat = threat_elem.text if threat_elem is not None else "Unknown"
 
@@ -224,7 +220,7 @@ def main(gmp: GMP, args):
                             count += 1
 
                 print(f"   └── Exported {count} findings to {filename}")
-                print(f"   └── Wrote result details to {debug_filename}")
+                print(f"   └── Wrote complete report response to {debug_filename}")
                 if not results:
                     print(f"   └── GMP returned no result elements for {name}")
             except Exception as e:
