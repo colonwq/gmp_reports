@@ -22,8 +22,8 @@ def _host_applications(host):
 
 def _package_fields(application):
     fields = [field.strip() for field in application.split(':')]
-    package_name = fields[2]
-    package_version = fields[3] if len(fields) > 3 else 'Unk'
+    package_name = fields[3]
+    package_version = fields[4] if len(fields) > 4 else 'Unk'
     return package_name, package_version
 
 
