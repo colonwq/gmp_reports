@@ -20,6 +20,13 @@ def _host_applications(host):
     return applications
 
 
+def _package_fields(application):
+    fields = [field.strip() for field in application.split(':')]
+    package_name = fields[2] if len(fields) > 2 else ''
+    package_version = fields[3] if len(fields) > 3 else ''
+    return package_name, package_version
+
+
 def main(gmp: GMP, args: Namespace) -> None:
     argv = getattr(args, 'argv', [])
     if len(argv) != 2:
@@ -39,7 +46,9 @@ def main(gmp: GMP, args: Namespace) -> None:
 
     with open(filename, mode='w', newline='', encoding='utf-8') as csv_file:
         writer = csv.writer(csv_file)
-        writer.writerow(['IP address', 'host name', 'package'])
+        writer.writerow([
+            'IP address', 'host name', 'package name', 'package version'
+        ])
 
         for host in hosts:
             ip = _text(host, 'ip') or _text(host, 'name')
@@ -53,10 +62,11 @@ def main(gmp: GMP, args: Namespace) -> None:
             applications = _host_applications(host)
             if applications:
                 for application in applications:
-                    writer.writerow([ip, hostname, application])
+                    package_name, package_version = _package_fields(application)
+                    writer.writerow([ip, hostname, package_name, package_version])
                     row_count += 1
             else:
-                writer.writerow([ip, hostname, ''])
+                writer.writerow([ip, hostname, '', ''])
                 row_count += 1
 
     print(f'Wrote {row_count} host/package rows to {filename}')
