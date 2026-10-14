@@ -1,3 +1,4 @@
+import csv
 from argparse import Namespace
 
 from gvm.protocols.gmp import GMP
@@ -33,28 +34,32 @@ def main(gmp: GMP, args: Namespace) -> None:
     )
 
     hosts = report_response.findall('.//report/host')
-    if not hosts:
-        print(f'No host details found in scan report {report_id}.')
-        return
+    filename = f'{report_id}-apps.csv'
+    row_count = 0
 
-    print(f'Hosts and discovered software in report {report_id}:')
-    for host in hosts:
-        ip = _text(host, 'ip') or _text(host, 'name') or 'Unknown IP'
-        hostname = ''
-        for detail in host.findall('detail'):
-            if _text(detail, 'name').casefold() == 'hostname':
-                hostname = _text(detail, 'value')
-                if hostname:
-                    break
+    with open(filename, mode='w', newline='', encoding='utf-8') as csv_file:
+        writer = csv.writer(csv_file)
+        writer.writerow(['IP address', 'host name', 'package'])
 
-        label = f'{ip} ({hostname})' if hostname else ip
-        applications = _host_applications(host)
-        print(f'\n{label}')
-        if applications:
-            for application in applications:
-                print(f'  {application}')
-        else:
-            print('  No software details found')
+        for host in hosts:
+            ip = _text(host, 'ip') or _text(host, 'name')
+            hostname = ''
+            for detail in host.findall('detail'):
+                if _text(detail, 'name').casefold() == 'hostname':
+                    hostname = _text(detail, 'value')
+                    if hostname:
+                        break
+
+            applications = _host_applications(host)
+            if applications:
+                for application in applications:
+                    writer.writerow([ip, hostname, application])
+                    row_count += 1
+            else:
+                writer.writerow([ip, hostname, ''])
+                row_count += 1
+
+    print(f'Wrote {row_count} host/package rows to {filename}')
 
 
 if __name__ == '__gmp__':
